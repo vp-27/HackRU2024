@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>VPStudios</title>
+        <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+        <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
+        <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
+        <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.js'></script>
+        <link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css' type='text/css' />
+        <!-- <script src="events.js"></script> -->
+
+        <style>
+            body { margin: 0; padding: 0; }
+            #map { position: absolute; top: 0; bottom: 30%; width: 100%; } /* Adjust the bottom value as needed */
+            #events-view {
+                position: absolute;
+                bottom: 0;
+                width: 100%;
+                height: 30%; /* Adjust as needed */
+                overflow: auto;
+                background: #f8f8f8; /* Adjust as needed */
+            }
+            /* Add styles for the events view and tiles */
+            
+            
+            .zoom-button { position: absolute; top: 10px; right: 10px; z-index: 1; }
+            .marker {
+                background-image: url('/static/Image/logo.jpeg');
+                background-size: cover;
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                cursor: pointer;
+                
+            }
+            .eventMarker {
+                background-image: url('/static/Image/mapicon.jpeg');
+                background-size: cover;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                cursor: pointer;
+                
+            }
+            .pulse {
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                background-color: rgba(255, 99, 71, 0.4);
+                position: absolute;
+                transform: scale(0.5);
+                animation: pulse 2s infinite;
+            }
+
+            @keyframes pulse {
+                0% {
+                    transform: scale(0.5);
+                }
+                50% {
+                    transform: scale(2);
+                }
+                100% {
+                    transform: scale(0.5);
+                }
+            }
+            
+            .event-tile {
+                /* border: 1px solid #ff4b4b; */
+                border-radius: 15px;
+                margin: 20px;
+                padding: 20px;
+                transition: all 0.3s ease-in-out;
+                background-color: #f9f9f9;
+                box-shadow: 0 0px 15px rgba(0, 0, 0, 0.1);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                cursor: pointer; /* Change cursor on hover */
+            }
+
+            .event-tile:hover {
+                color: #fff; /* Change text color on hover */
+                letter-spacing: 0.035em;
+                border-color: #ff0008;
+                box-shadow: 0 0px 35px #ff0008;
+                transform: scale(1.02);
+            }
+
+
+            .event-tile h2 {
+                color: #ff0008;
+                font-size: 1.5em;
+                margin-bottom: 10px;
+            }
+
+            .event-tile p {
+                color: #333;
+                font-size: 1em;
+                margin-bottom: 10px;
+            }
+
+            .zoom-button {
+                background-color: #4CAF50; /* Green */
+                border: none;
+                color: white;
+                padding: 15px 32px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+                margin: 4px 2px;
+                cursor: pointer;
+                border-radius: 12px;
+            }
+
+            .zoom-button:hover {
+                color: #fff; /* Change text color on hover */
+                letter-spacing: 0.035em;
+                box-shadow: 0 0px 35px #000000;
+                transform: scale(1.02);
+            }
+
+
+            /* Switch stuff */
+            .switch {
+                position: absolute;
+                top: 70px; /* Adjust as needed */
+                right: 10px; /* Adjust as needed */
+                display: inline-block;
+                width: 60px;
+                height: 34px;
+            }
+
+
+            .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            }
+
+            .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            }
+
+            .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            }
+
+            input:checked + .slider {
+            background-color: #2196F3;
+            }
+
+            input:checked + .slider:before {
+            transform: translateX(26px);
+            }
+
+            .slider.round {
+            border-radius: 34px;
+            }
+
+            .slider.round:before {
+            border-radius: 50%;
+            }
+
+            .text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            top: 0;
+            text-align: center;
+            line-height: 34px;
+            transition: .4s;
+            }
+
+            input:checked + .slider .text {
+            transform: translateX(-100%);
+            }
+
+
+            
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        <button class="zoom-button" onclick="zoomToUserLocation()">Zoom to My Location</button>
+        <!-- <label class="switch">
+            <input type="checkbox" id="toggle-button" onclick="toggleOrder()">
+            <span class="slider round">
+              <span class="text">Time</span>
+            </span>
+        </label> -->
+        <div id="events-view"></div> <!-- New events view -->
+        <script>
+
+            mapboxgl.accessToken = 'pk.eyJ1IjoiaGVtaXNoIiwiYSI6ImNsdTQ5NWtsOTFmcXMycWs0ZTA0dmQ2NTcifQ.MNt_n-9PjBFBT3k0jCWz-Q';
+            const map = new mapboxgl.Map({
+                container: 'map', // container ID
+                center: [-74.45, 40.52], // starting position [lng, lat]
+                zoom: 13 // starting zoom
+            });
+
+            let marker;
+
+            let userLocation; // Add this line to declare a global variable for the user's location
+
+            // Get user's current location
+            function zoomToUserLocation() {
+                // Get the zoom button
+                const zoomButton = document.querySelector('.zoom-button');
+
+                if (navigator.geolocation) {
+                    const options = {
+                        enableHighAccuracy: true,
+                        maximumAge: 1000
+                    };
+
+                    const successCallback = position => {
+                        const { latitude, longitude } = position.coords;
+
+                        userLocation = [longitude, latitude]; // Store the user's location in the global variable
+
+                        // Disable the zoom button
+                        zoomButton.disabled = true;
+
+                        // Animate the transition to the user's location
+                        map.flyTo({
+                            center: [longitude, latitude],
+                            zoom: 18,
+                            speed: 1,
+                            curve: 1,
+                            essential: true
+                        });
+
+                        // Enable the zoom button once the map has arrived
+                        map.once('moveend', () => {
+                            zoomButton.disabled = false;
+                        });
+
+                        // Remove previous marker if exists
+                        if (marker) {
+                            marker.remove();
+                        }
+
+                        // Create a marker at the user's location
+                        marker = new mapboxgl.Marker({
+                            element: createMarkerElement(),
+                            anchor: 'bottom'
+                        })
+                            .setLngLat([longitude, latitude])
+                            .addTo(map);
+                    };
+
+                    const errorCallback = error => {
+                        console.error(error);
+                    };
+
+                    // Get the user's current position
+                    navigator.geolocation.getCurrentPosition(successCallback, errorCallback, options);
+                } else {
+                    console.error('Geolocation is not supported by this browser.');
+                }
+            }
+
+            // New mapbox directions object
+            const directions = new MapboxDirections({
+                accessToken: mapboxgl.accessToken,
+                unit: 'metric',
+                profile: 'mapbox/walking',
+                interactive: false // Disable the click event listener
+            });
+            map.addControl(directions, 'top-left');
+
+            // Add a custom event listener for the dblclick event
+            map.on('dblclick', function(e) {
+                // Check if userLocation is available
+                if (userLocation) {
+                    // Set the origin and destination of the directions
+                    directions.setOrigin(userLocation);
+                    directions.setDestination(e.lngLat);
+                } else {
+                    // If userLocation is not available, add a marker at the clicked location
+                    new mapboxgl.Marker()
+                        .setLngLat(e.lngLat)
+                        .addTo(map);
+                }
+            });
+            // This double click portion may not wrok
+
+
+
+            // Create a custom marker element
+            function createMarkerElement() {
+                const markerElement = document.createElement('div');
+                markerElement.className = 'marker';
+                
+
+                // Create a child div for the pulsating effect
+                const pulseElement = document.createElement('div');
+                pulseElement.className = 'pulse';
+                markerElement.appendChild(pulseElement);
+
+                return markerElement;
+            }
+
+            function createEventMarkerElement() {
+                const markerElement = document.createElement('div');
+                markerElement.className = 'eventMarker';
+                return markerElement;
+            }
+            // Where the event data is stored
+            let events = [
+                {
+name: "Equine Nutrition Certificate Workshop",
+date: "Tuesday, January 16, 2024, 9:00 a.m. to Monday, April 29, 2024, 11:59 p.m.",
+address: "Virtual Event",
+                    coordinates: [] // longitude, latitude
+                },
+                // more events...
+                {
+name: "Faculty Success Community Groups",
+date: "Friday, February 09, 2024, 9:00 a.m. to Friday, April 19, 2024, 10:00 a.m.",
+address: "via Zoom Every Friday",
+                    coordinates: [] // longitude, latitude
+                },
+                {
+name: "The Fair Food Program: a New Approach to Agricultural and Low-Wage Labor",
+date: "Wednesday, March 27, 2024, 6:00 p.m. to 8:00 p.m.",
+address: "Labor Education Center, New Brunswick",
+                    coordinates: [-74.427550,40.480100] // longitude, latitude
+                },
+                {
+name: "Poetry of Resistance",
+date: "Wednesday, March 27, 2024, 6:00 p.m. to 7:30 p.m.",
+address: "Kathleen Ludwig Global Village Center, New Brunswick",
+                    coordinates: [-74.438910,40.483880] // longitude, latitude
+                },
+                {
+name: "Writers at Rutgers Series featuring Hafizah Augustus Geter",
+date: "Wednesday, March 27, 2024, 7:30 p.m. to 8:30 p.m.",
+address: "College Avenue Student Center",
+                    coordinates: [-74.451950,40.502209] // longitude, latitude
+                },
+                {
+name: "Academic Master Plan Workshop IV: Community Engagement",
+date: "Thursday, March 28, 2024, 1:00 p.m. to 3:00 p.m.",
+address: "Trayes Hall, Douglass Student Center",
+                    coordinates: [-74.436836,40.484901] // longitude, latitude
+                },
+                {
+name: "Department of Entomology Spring Seminar",
+date: "Friday, March 29, 2024, 11:00 a.m. to 12:00 p.m.",
+address: "Hybrid Event - Thompson Hall, room 206, New Brunswick",
+                    coordinates: [-74.447890,40.489690] // longitude, latitude
+                },
+                {
+name: "Writing for Our Lives:  A Workshop with Reproductive Rights Author and Activist Merle Hoffman",
+date: "Tuesday, April 02, 2024, 4:00 p.m. to 5:00 p.m.",
+address: "Rutgers Academic Building, room 2400, New Brunswick",
+                    coordinates: [-74.446533,40.501541] // longitude, latitude
+                },
+                {
+name: "Making A Revolution",
+date: "Tuesday, April 02, 2024, 7:00 p.m. to 9:00 p.m.",
+address: "Rutgers Academic Building, room 2400, New Brunswick",
+                    coordinates: [-74.446533,40.501541] // longitude, latitude
+                },
+            ];
+
+            // This function uses the Mapbox Geocoding API to convert an address to coordinates
+            async function geocodeAddress(address) {
+                const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=Ypk.eyJ1IjoiaGVtaXNoIiwiYSI6ImNsdTQ5NWtsOTFmcXMycWs0ZTA0dmQ2NTcifQ.MNt_n-9PjBFBT3k0jCWz-Q`);
+                const data = await response.json();
+                return data.features[0].geometry.coordinates;
+            }
+
+            // Go through each event and geocode the address
+            async function geocodeAllAddresses() {
+                for (let i = 0; i < events.length; i++) {
+                    events[i].coordinates = await geocodeAddress(events[i].address);
+                }
+            }
+
+            geocodeAllAddresses().then(() => {
+                console.log(events); // Now you can see the events with their coordinates
+            });
+
+            // Function to create an event tile
+            function createEventTile(event) {
+                const tile = document.createElement('div');
+                tile.className = 'event-tile';
+                tile.innerHTML = `
+                    <h2>${event.name}</h2>
+                    <p>Date: ${event.date}</p>
+                    <p>Address: ${event.address}</p>
+                `;
+                
+
+                // Add an event listener to the tile
+                tile.addEventListener('click', () => {
+                    // Check if userLocation is available
+                    if (userLocation) {
+                        // Set the origin and destination of the directions
+                        directions.setOrigin(userLocation);
+                        directions.setDestination(event.coordinates);
+                    } else {
+                        // If userLocation is not available, zoom to the event's location
+                        map.flyTo({
+                            center: event.coordinates,
+                            zoom: 18,
+                            speed: 1,
+                            curve: 1,
+                            essential: true
+                        });
+                    }
+                });
+                
+
+                return tile;
+            }
+
+
+            // Sort events by date
+            events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Add tiles to the events view
+            const eventsView = document.getElementById('events-view');
+            events.forEach((event, index) => {
+                const tile = createEventTile(event);
+                tile.id = 'event-' + index; // Assign a unique ID to the tile
+                eventsView.appendChild(tile);
+            });
+
+            // Add markers to the map for each event
+            // add markers for each event, use the new function:
+            // Add markers to the map for each event
+            map.on('load', function() {
+                events.forEach((event, index) => {
+                    const markerElement = createEventMarkerElement();
+                    
+
+                    // Add event listener to the marker element
+                    markerElement.addEventListener('click', () => {
+                        if (userLocation) {
+                            // Set the origin and destination of the directions
+                            directions.setOrigin(userLocation);
+                            directions.setDestination(event.coordinates);
+                        } else {
+                            // If userLocation is not available, zoom to the event's location
+                            map.flyTo({
+                                center: event.coordinates,
+                                zoom: 18,
+                                speed: 1,
+                                curve: 1,
+                                essential: true
+                            });
+                        }
+                        // Scroll to the corresponding event in the tile
+                        document.getElementById('event-' + index).scrollIntoView();
+                    });
+
+                    // Create a new marker with the custom element
+                    const marker = new mapboxgl.Marker(markerElement)
+                        .setLngLat(event.coordinates)
+                        .addTo(map);
+
+                    
+                        
+                });
+            });
+
+            let orderByDistance = false;
+
+            function toggleOrder() {
+                const toggleButton = document.getElementById('toggle-button');
+                const textElement = document.querySelector('.slider .text');
+                
+                // Check if the toggle button is checked
+                if (toggleButton.checked) {
+                    textElement.textContent = 'Distance';
+                    orderByDistance = true;
+                } else {
+                    textElement.textContent = 'Time';
+                    orderByDistance = false;
+                }
+                
+                // Display the events
+                displayEvents();
+            }
+
+        function displayEvents() {
+            // Clear the events view
+            eventsView.innerHTML = '';
+
+            // Sort and display the events
+            if (orderByDistance) {
+                // Calculate the distance for each event
+                events.forEach(event => {
+                    const [lon1, lat1] = userLocation;
+                    const [lon2, lat2] = event.coordinates;
+                    const R = 6371e3; // Radius of the earth in metres
+                    const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+                    const φ2 = lat2 * Math.PI/180;
+                    const Δφ = (lat2-lat1) * Math.PI/180;
+                    const Δλ = (lon2-lon1) * Math.PI/180;
+
+                    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                            Math.cos(φ1) * Math.cos(φ2) *
+                            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+                    event.distance = R * c; // in metres
+                });
+
+                // Sort events by distance
+                events.sort((a, b) => a.distance - b.distance);
+            } else {
+                // Sort events by date
+                events.sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
+
+            // Add tiles to the events view
+            events.forEach((event, index) => {
+                const tile = createEventTile(event);
+                tile.id = 'event-' + index; // Assign a unique ID to the tile
+                eventsView.appendChild(tile);
+            });
+        }
+
+        // Call displayEvents() in the successCallback of zoomToUserLocation()
+        const successCallback = position => {
+            // ...
+            displayEvents();
+        };
+
+        function toggleOrder() {
+            const toggleButton = document.getElementById('toggle-button');
+            const textElement = document.querySelector('.slider .text');
+            if (toggleButton.checked) {
+                textElement.textContent = 'Distance';
+            } else {
+                textElement.textContent = 'Time';
+            }
+            displayEvents();
+        }
+
+        </script>
+    </body>
+</html>
+</div>
+
