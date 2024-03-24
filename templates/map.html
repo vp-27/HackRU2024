@@ -8,9 +8,55 @@
         <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
         <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.js'></script>
         <link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css' type='text/css' />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
         <!-- <script src="events.js"></script> -->
 
         <style>
+            /* Add these styles for the modal */
+            .modal {
+                display: flex; /* Align items in the center */
+                justify-content: center; /* Center items horizontally */
+                align-items: center; /* Center items vertically */
+                position: fixed; /* Stay in place */
+                z-index: 1; /* Sit on top */
+                padding-top: 100px; /* Location of the box */
+                left: 0;
+                top: 0;
+                width: 100%; /* Full width */
+                height: 100%; /* Full height */
+                overflow: auto; /* Enable scroll if needed */
+                background-color: rgb(255, 125, 125); /* Fallback color */
+                background-color: rgba(50, 1, 1, 0.398); /* Black w/ opacity */
+                font-size: 30px; /* Increase font size */
+            }
+            /* Modal Content */
+            .modal-content {
+                background-color: #fefefe;
+                margin: auto;
+                padding: 20px;
+                border: 1px solid #888;
+                width: 80%;
+                text-align: center;
+                border-radius: 15px;
+                background-color: rgba(255, 99, 71, 0.912);
+                position: center;
+                transform: scale(0.9);
+            }
+
+            /* The Close Button */
+            .close {
+                color: #aaaaaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+            }
+
+            .close:hover,
+            .close:focus {
+                color: #000;
+                text-decoration: none;
+                cursor: pointer;
+            }
             body { margin: 0; padding: 0; }
             #map { position: absolute; top: 0; bottom: 30%; width: 100%; } /* Adjust the bottom value as needed */
             #events-view {
@@ -25,6 +71,16 @@
             
             
             .zoom-button { position: absolute; top: 10px; right: 10px; z-index: 1; }
+            .eventMarker {
+                background-image: url('/static/Image/mapicon.jpeg');
+                background-size: cover;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                cursor: pointer;
+                
+                
+            }
             .marker {
                 background-image: url('/static/Image/logo.jpeg');
                 background-size: cover;
@@ -34,15 +90,7 @@
                 cursor: pointer;
                 
             }
-            .eventMarker {
-                background-image: url('/static/Image/mapicon.jpeg');
-                background-size: cover;
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                cursor: pointer;
-                
-            }
+            
             .pulse {
                 width: 30px;
                 height: 30px;
@@ -122,91 +170,26 @@
                 box-shadow: 0 0px 35px #000000;
                 transform: scale(1.02);
             }
-
-
-            /* Switch stuff */
-            .switch {
-                position: absolute;
-                top: 70px; /* Adjust as needed */
-                right: 10px; /* Adjust as needed */
-                display: inline-block;
-                width: 60px;
-                height: 34px;
-            }
-
-
-            .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-            }
-
-            .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            }
-
-            .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            }
-
-            input:checked + .slider {
-            background-color: #2196F3;
-            }
-
-            input:checked + .slider:before {
-            transform: translateX(26px);
-            }
-
-            .slider.round {
-            border-radius: 34px;
-            }
-
-            .slider.round:before {
-            border-radius: 50%;
-            }
-
-            .text {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            left: 0;
-            top: 0;
-            text-align: center;
-            line-height: 34px;
-            transition: .4s;
-            }
-
-            input:checked + .slider .text {
-            transform: translateX(-100%);
-            }
-
-
             
         </style>
     </head>
     <body>
         <div id="map"></div>
+        <div id="myModal" class="modal">
+            <div class="modal-content" style="padding: 15px;">
+                <span class="close" style="font-size: 30px;">&times;</span>
+                <h2 style="font-family: cursive; text-align: center;">Eventify</h2>
+                <p style="text-align: left;">
+                    <div>Introducing Eventify!</div>
+                    <div>___</div>
+                    <div>The latest app you can use to find nearest activities at Rutgers New Brunswick near you.</div>
+                    <div>___</div>
+                    <div>All you need to do is hit zoom to my location, and click on your desired event to be directed to its location!</div>
+                </p>
+            </div>
+        </div>
+
         <button class="zoom-button" onclick="zoomToUserLocation()">Zoom to My Location</button>
-        <!-- <label class="switch">
-            <input type="checkbox" id="toggle-button" onclick="toggleOrder()">
-            <span class="slider round">
-              <span class="text">Time</span>
-            </span>
-        </label> -->
         <div id="events-view"></div> <!-- New events view -->
         <script>
 
@@ -216,6 +199,23 @@
                 center: [-74.45, 40.52], // starting position [lng, lat]
                 zoom: 13 // starting zoom
             });
+            // Add this script for the modal
+            var modal = document.getElementById("myModal");
+            var span = document.getElementsByClassName("close")[0];
+
+            window.onload = function() {
+                modal.style.display = "block";
+            }
+
+            span.onclick = function() {
+                modal.style.display = "none";
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
 
             let marker;
 
@@ -287,22 +287,6 @@
                 interactive: false // Disable the click event listener
             });
             map.addControl(directions, 'top-left');
-
-            // Add a custom event listener for the dblclick event
-            map.on('dblclick', function(e) {
-                // Check if userLocation is available
-                if (userLocation) {
-                    // Set the origin and destination of the directions
-                    directions.setOrigin(userLocation);
-                    directions.setDestination(e.lngLat);
-                } else {
-                    // If userLocation is not available, add a marker at the clicked location
-                    new mapboxgl.Marker()
-                        .setLngLat(e.lngLat)
-                        .addTo(map);
-                }
-            });
-            // This double click portion may not wrok
 
 
 
@@ -486,80 +470,11 @@ address: "Rutgers Academic Building, room 2400, New Brunswick",
                 });
             });
 
-            let orderByDistance = false;
+         
 
-            function toggleOrder() {
-                const toggleButton = document.getElementById('toggle-button');
-                const textElement = document.querySelector('.slider .text');
-                
-                // Check if the toggle button is checked
-                if (toggleButton.checked) {
-                    textElement.textContent = 'Distance';
-                    orderByDistance = true;
-                } else {
-                    textElement.textContent = 'Time';
-                    orderByDistance = false;
-                }
-                
-                // Display the events
-                displayEvents();
-            }
+            
 
-        function displayEvents() {
-            // Clear the events view
-            eventsView.innerHTML = '';
-
-            // Sort and display the events
-            if (orderByDistance) {
-                // Calculate the distance for each event
-                events.forEach(event => {
-                    const [lon1, lat1] = userLocation;
-                    const [lon2, lat2] = event.coordinates;
-                    const R = 6371e3; // Radius of the earth in metres
-                    const φ1 = lat1 * Math.PI/180; // φ, λ in radians
-                    const φ2 = lat2 * Math.PI/180;
-                    const Δφ = (lat2-lat1) * Math.PI/180;
-                    const Δλ = (lon2-lon1) * Math.PI/180;
-
-                    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                            Math.cos(φ1) * Math.cos(φ2) *
-                            Math.sin(Δλ/2) * Math.sin(Δλ/2);
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-                    event.distance = R * c; // in metres
-                });
-
-                // Sort events by distance
-                events.sort((a, b) => a.distance - b.distance);
-            } else {
-                // Sort events by date
-                events.sort((a, b) => new Date(a.date) - new Date(b.date));
-            }
-
-            // Add tiles to the events view
-            events.forEach((event, index) => {
-                const tile = createEventTile(event);
-                tile.id = 'event-' + index; // Assign a unique ID to the tile
-                eventsView.appendChild(tile);
-            });
-        }
-
-        // Call displayEvents() in the successCallback of zoomToUserLocation()
-        const successCallback = position => {
-            // ...
-            displayEvents();
-        };
-
-        function toggleOrder() {
-            const toggleButton = document.getElementById('toggle-button');
-            const textElement = document.querySelector('.slider .text');
-            if (toggleButton.checked) {
-                textElement.textContent = 'Distance';
-            } else {
-                textElement.textContent = 'Time';
-            }
-            displayEvents();
-        }
+        
 
         </script>
     </body>
